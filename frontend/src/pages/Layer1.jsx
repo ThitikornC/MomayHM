@@ -103,7 +103,7 @@ function DonutChart({ zones }) {
   if (zones.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {Array.from({ length: 13 }, (_, i) => `กล้อง ${i + 1}`).map((name) => (
+        {Array.from({ length: 13 }, (_, i) => `กล้อง ${i + 1}`).map((name, i) => (
           <ZoneDonut key={name} name={name} ratio={0} color="#3b82f6" />
         ))}
       </div>
@@ -391,7 +391,7 @@ export default function Layer1() {
     const count = cam?.total_people || 0
     const capacity = DEFAULT_CAPACITY
     const ratio = Math.min(count / capacity, 1)
-    return { name: `กล้อง ${i + 1}`, color: '#3b82f6', count, capacity, ratio, running: cam?.running || false }
+    return { name: cam?.name || `กล้อง ${i + 1}`, color: '#3b82f6', count, capacity, ratio, running: cam?.running || false }
   })
 
   // Risk score = รวมทุกกล้อง / ความจุรวมทั้งหมด × 100
