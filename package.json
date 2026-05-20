@@ -1,0 +1,9 @@
+{
+  "name": "heatmap-cal",
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,green\" \".venv\\\\Scripts\\\\python.exe -m uvicorn main:app --reload --reload-include *.py --reload-exclude node_modules --reload-exclude frontend --host 0.0.0.0 --port 8000\" \"frontend\\\\node_modules\\\\.bin\\\\vite.cmd --config frontend/vite.config.js frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,30 @@
+# Python on-site (ไม่ต้องขึ้น cloud)
+main.py
+requirements.txt
+config.json
+static/
+templates/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Local env files (ห้ามขึ้น)
+.env
+.env.local
+.env.*.local
+api-gateway/.env
+frontend/.env
+frontend/.env.local
+
+# Build outputs & dependencies
+node_modules/
+frontend/dist/
+frontend/node_modules/
+api-gateway/node_modules/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
