@@ -8,8 +8,9 @@ import Layer1 from './pages/Layer1.jsx'
 import Layer11 from './pages/Layer1.1.jsx'
 import LayerGreedy from './pages/LayerGreedy.jsx'
 import LayerDP from './pages/LayerDP.jsx'
+import RelationshipLayer from './pages/RelationshipLayer.jsx'
 
-const HOME = import.meta.env.VITE_HOME || '/preview'
+const HOME = import.meta.env.VITE_HOME || '/relationship'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/preview" element={<Layer11 />} />
           <Route path="/layer-greedy" element={<LayerGreedy />} />
           <Route path="/layer-dp" element={<LayerDP />} />
+          <Route path="/relationship" element={<RelationshipLayer />} />
           <Route path="*" element={<Navigate to={HOME} replace />} />
         </Routes>
       </BrowserRouter>
