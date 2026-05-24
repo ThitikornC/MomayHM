@@ -10,6 +10,19 @@ const HEAT_PALETTE = [
   '#ffcc00','#ff8800','#ff4400','#ff0000','#cc0000',
 ]
 
+// ── Zone colours: A = front/green, B = mid/amber, C = back/red ────────────
+const ZONE_COLORS  = ['#22c55e', '#f59e0b', '#ef4444']
+const ZONE_LABELS  = ['A', 'B', 'C']
+
+// Assign zone (0=A front, 1=B mid, 2=C back) based on cell centre y.
+// High y = near viewer = front. Low y = far = back.
+function _cellZone(cy, minCy, rangeCy) {
+  const t = (cy - minCy) / rangeCy   // 0 = furthest back, 1 = nearest front
+  if (t >= 0.67) return 0            // Zone A – green
+  if (t >= 0.33) return 1            // Zone B – amber
+  return 2                           // Zone C – red
+}
+
 function _pip(px, py, poly) {
   let inside = false, j = poly.length - 1
   for (let i = 0; i < poly.length; i++) {
@@ -85,6 +98,51 @@ const _CELLS_PROMISE = fetch('/Floorplan/HeatmapgridFloor1.svg')
     const gridPath = paths[1]?.[1] ?? ''
     return _computeCells(gridPath, boundary)
   })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZoneColorLayer — static semi-transparent A/B/C zone tint under the heatmap
+// ─────────────────────────────────────────────────────────────────────────────
+function ZoneColorLayer({ opacity }) {
+  const [cells, setCells] = useState([])
+  useEffect(() => { _CELLS_PROMISE.then(setCells) }, [])
+  if (!cells.length) return null
+
+  // Compute y-range for zone classification
+  let minCy = Infinity, maxCy = -Infinity
+  for (const [,, x0, y0,,,  x2, y2] of cells) {
+    const cy = (y0 + y2) / 2
+    if (cy < minCy) minCy = cy
+    if (cy > maxCy) maxCy = cy
+  }
+  const rangeCy = maxCy - minCy || 1
+
+  return (
+    <svg
+      viewBox="0 0 2547 2398"
+      style={{
+        position: 'absolute', top: 0, left: 0,
+        width: '100%', height: '100%',
+        transform: 'translateX(2%) translateY(9%)',
+        pointerEvents: 'none',
+        opacity, transition: 'opacity 0.4s ease',
+        overflow: 'visible',
+      }}
+    >
+      {cells.map(([r, c, x0, y0, x1, y1, x2, y2, x3, y3]) => {
+        const cy   = (y0 + y2) / 2
+        const zone = _cellZone(cy, minCy, rangeCy)
+        return (
+          <polygon
+            key={`z-${r}-${c}`}
+            points={`${x0},${y0} ${x1},${y1} ${x2},${y2} ${x3},${y3}`}
+            fill={ZONE_COLORS[zone]}
+            fillOpacity="0.28"
+          />
+        )
+      })}
+    </svg>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HeatmapAnimatedCanvas
@@ -297,7 +355,7 @@ export default function RelationshipLayer() {
       e.preventDefault()  // stop page scroll while swiping on image
       const dy = startY - e.touches[0].clientY
       if (Math.abs(dy) > 18) {
-        const dir = dy > 0 ? 1 : -1   // swipe up = higher floor, swipe down = lower floor
+        const dir = dy > 0 ? -1 : 1   // swipe up = lower floor index (scroll-natural feel)
         setSelected(prev => Math.max(0, Math.min(FLOORS.length - 1, prev + dir)))
         setStage('single')
         resetIdle()
@@ -381,6 +439,17 @@ export default function RelationshipLayer() {
               การเชื่อมข้อมูลหลายประเภทเข้าด้วยกัน เพื่ออธิบายเหตุ ผล กระทบ และพฤติกรรมของอาคาร
             </p>
           </div>
+          {/* Zone legend */}
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {ZONE_LABELS.map((label, i) => (
+              <div key={label} className="flex items-center gap-1">
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: ZONE_COLORS[i], boxShadow: `0 0 6px ${ZONE_COLORS[i]}88` }} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: ZONE_COLORS[i], letterSpacing: 1 }}>
+                  ZONE {label}
+                </span>
+              </div>
+            ))}
+          </div>
 
         </div>
 
@@ -392,6 +461,13 @@ export default function RelationshipLayer() {
           <div ref={viewerRef} className="relative" style={{ width: FLOOR_W, height: FIXED_H }}>
             {/* 8-bit skeleton — fades out once all floor images are loaded */}
             <PixelSkeleton show={!allLoaded} />
+            {/* Scale wrapper — enlarges stack in stacked mode; card border stays unchanged */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              transform: stage === 'stacked' ? 'scale(1.6)' : 'scale(1)',
+              transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              transformOrigin: '50% 50%',
+            }}>
             {/* Render floors bottom (ชั้น 1) first so upper floors overlap correctly */}
             {FLOORS.map((floor, i) => {
               const isSelected  = i === selectedFloor
@@ -434,6 +510,10 @@ export default function RelationshipLayer() {
                     style={{ width: '100%', display: 'block', imageRendering: 'auto', transform: 'scale(1.03)', transformOrigin: 'top left' }}
                     draggable={false}
                   />
+                  {/* Zone A/B/C tint layer — sits under the animated heatmap */}
+                  <ZoneColorLayer
+                    opacity={stage === 'stacked' ? 0.35 : isInactive ? 0 : 0.65}
+                  />
                   {/* Animated heatmap colors (multiply under grid lines) */}
                   <HeatmapAnimatedCanvas
                     floorIdx={i}
@@ -462,6 +542,7 @@ export default function RelationshipLayer() {
                 </div>
               )
             })}
+            </div>
           </div>
 
 
