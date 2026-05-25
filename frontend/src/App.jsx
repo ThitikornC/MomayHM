@@ -10,7 +10,7 @@ import LayerGreedy from './pages/LayerGreedy.jsx'
 import LayerDP from './pages/LayerDP.jsx'
 import RelationshipLayer from './pages/RelationshipLayer.jsx'
 
-const HOME = import.meta.env.VITE_HOME || '/relationship'
+const HOME = import.meta.env.VITE_HOME || '/preview'
 
 export default function App() {
   return (

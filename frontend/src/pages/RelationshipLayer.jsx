@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Layers, Building2 } from 'lucide-react'
+import { Layers, Users, Zap } from 'lucide-react'
 import LayerGreedy from './LayerGreedy.jsx'
 import LayerDP from './LayerDP.jsx'
 
@@ -10,18 +10,7 @@ const HEAT_PALETTE = [
   '#ffcc00','#ff8800','#ff4400','#ff0000','#cc0000',
 ]
 
-// ── Zone colours: A = front/green, B = mid/amber, C = back/red ────────────
-const ZONE_COLORS  = ['#22c55e', '#f59e0b', '#ef4444']
-const ZONE_LABELS  = ['A', 'B', 'C']
-
-// Assign zone (0=A front, 1=B mid, 2=C back) based on cell centre y.
-// High y = near viewer = front. Low y = far = back.
-function _cellZone(cy, minCy, rangeCy) {
-  const t = (cy - minCy) / rangeCy   // 0 = furthest back, 1 = nearest front
-  if (t >= 0.67) return 0            // Zone A – green
-  if (t >= 0.33) return 1            // Zone B – amber
-  return 2                           // Zone C – red
-}
+const _clamp01 = v => Math.max(0, Math.min(1, v))
 
 function _pip(px, py, poly) {
   let inside = false, j = poly.length - 1
@@ -75,6 +64,46 @@ function _computeCells(gridPath, boundary) {
   return out
 }
 
+function _buildCellZoneMap(cells) {
+  if (!cells.length) return new Map()
+
+  function axisGroups(kind) {
+    const groups = new Map()
+    for (const cell of cells) {
+      const [r, c, x0, y0, x1, y1, x2, y2, x3, y3] = cell
+      const key = kind === 'r' ? r : c
+      const cy = (y0 + y1 + y2 + y3) / 4
+      const g = groups.get(key) ?? { sumY: 0, count: 0 }
+      g.sumY += cy
+      g.count += 1
+      groups.set(key, g)
+    }
+    const items = [...groups.entries()].map(([key, g]) => ({ key, avgY: g.sumY / g.count }))
+    const spread = items.length ? Math.max(...items.map(i => i.avgY)) - Math.min(...items.map(i => i.avgY)) : 0
+    return { items, spread }
+  }
+
+  const byR = axisGroups('r')
+  const byC = axisGroups('c')
+  const axis = byC.spread > byR.spread ? 'c' : 'r'
+  const axisItems = (axis === 'c' ? byC.items : byR.items).sort((a, b) => b.avgY - a.avgY) // front (near viewer) -> back
+
+  const aEnd = Math.max(1, Math.floor(axisItems.length / 3))
+  const bEnd = Math.max(aEnd + 1, Math.floor((axisItems.length * 2) / 3))
+  const bandZone = new Map()
+  axisItems.forEach((it, i) => {
+    bandZone.set(it.key, i < aEnd ? 'A' : i < bEnd ? 'B' : 'C')
+  })
+
+  const cellZone = new Map()
+  for (const cell of cells) {
+    const [r, c] = cell
+    const bandKey = axis === 'c' ? c : r
+    cellZone.set(`${r},${c}`, bandZone.get(bandKey) ?? 'B')
+  }
+  return cellZone
+}
+
 // ── Per-floor seeds — each floor is truly independent ─────────────────────
 // (different frequencies + starting phase → no visual correlation between floors)
 const FLOOR_SEEDS = [
@@ -85,6 +114,12 @@ const FLOOR_SEEDS = [
   { fa:0.19, fb:0.30, fc:0.23, fd:0.21, fe:0.15, t0:62.4 },
   { fa:0.26, fb:0.23, fc:0.12, fd:0.31, fe:0.08, t0:55.1 },
 ]
+
+const ZONE_PROFILES = {
+  A: { center: 0.55, amp: 0.24, wave: 0.04, drift: 0.90 },
+  B: { center: 0.69, amp: 0.20, wave: 0.04, drift: 1.00 },
+  C: { center: 0.88, amp: 0.15, wave: 0.03, drift: 1.12 },
+}
 
 // Fetch SVG once → parse exact boundary polygon + grid lines → compute cells
 const _CELLS_PROMISE = fetch('/Floorplan/HeatmapgridFloor1.svg')
@@ -98,51 +133,6 @@ const _CELLS_PROMISE = fetch('/Floorplan/HeatmapgridFloor1.svg')
     const gridPath = paths[1]?.[1] ?? ''
     return _computeCells(gridPath, boundary)
   })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ZoneColorLayer — static semi-transparent A/B/C zone tint under the heatmap
-// ─────────────────────────────────────────────────────────────────────────────
-function ZoneColorLayer({ opacity }) {
-  const [cells, setCells] = useState([])
-  useEffect(() => { _CELLS_PROMISE.then(setCells) }, [])
-  if (!cells.length) return null
-
-  // Compute y-range for zone classification
-  let minCy = Infinity, maxCy = -Infinity
-  for (const [,, x0, y0,,,  x2, y2] of cells) {
-    const cy = (y0 + y2) / 2
-    if (cy < minCy) minCy = cy
-    if (cy > maxCy) maxCy = cy
-  }
-  const rangeCy = maxCy - minCy || 1
-
-  return (
-    <svg
-      viewBox="0 0 2547 2398"
-      style={{
-        position: 'absolute', top: 0, left: 0,
-        width: '100%', height: '100%',
-        transform: 'translateX(2%) translateY(9%)',
-        pointerEvents: 'none',
-        opacity, transition: 'opacity 0.4s ease',
-        overflow: 'visible',
-      }}
-    >
-      {cells.map(([r, c, x0, y0, x1, y1, x2, y2, x3, y3]) => {
-        const cy   = (y0 + y2) / 2
-        const zone = _cellZone(cy, minCy, rangeCy)
-        return (
-          <polygon
-            key={`z-${r}-${c}`}
-            points={`${x0},${y0} ${x1},${y1} ${x2},${y2} ${x3},${y3}`}
-            fill={ZONE_COLORS[zone]}
-            fillOpacity="0.28"
-          />
-        )
-      })}
-    </svg>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HeatmapAnimatedCanvas
@@ -159,6 +149,7 @@ function HeatmapAnimatedCanvas({ floorIdx, apiValues = null, opacity }) {
   const [cells, setCells] = useState([])
   const polyRefs = useRef([])
   const raf = useRef(null)
+  const simRef = useRef(null)
   // Use ref so animation loop always reads latest API data without restarting
   const apiRef = useRef(apiValues)
   useEffect(() => { apiRef.current = apiValues }, [apiValues])
@@ -172,29 +163,114 @@ function HeatmapAnimatedCanvas({ floorIdx, apiValues = null, opacity }) {
   useEffect(() => {
     if (!cells.length) return
     const seed = FLOOR_SEEDS[floorIdx] ?? FLOOR_SEEDS[0]
+    const cellZone = _buildCellZoneMap(cells)
+    const rowVals = [...new Set(cells.map(([r]) => r))]
+    const colVals = [...new Set(cells.map(([,c]) => c))]
+    const minR = Math.min(...rowVals), maxR = Math.max(...rowVals)
+    const minC = Math.min(...colVals), maxC = Math.max(...colVals)
+
+    simRef.current = {
+      zones: {
+        A: 0.44 + floorIdx * 0.01,
+        B: 0.62 + floorIdx * 0.008,
+        C: 0.79 + floorIdx * 0.006,
+      },
+      cellNoise: cells.map((_, i) =>
+        Math.sin((i + 3) * 12.9898 + (floorIdx + 1) * 78.233) * 0.5 + 0.5
+      ),
+      minR, maxR, minC, maxC,
+    }
+
     let t = seed.t0
     let running = true
     function draw() {
       t += 0.013
       const ext = apiRef.current   // real API data (null while not yet available)
+      const sim = simRef.current
+      const hasCellPayload = !!(ext && (Array.isArray(ext) || ArrayBuffer.isView(ext)))
+      const zonePayload = ext && !Array.isArray(ext) && !ArrayBuffer.isView(ext) ? (ext.zones ?? ext) : null
+      const hasZonePayload = !!(zonePayload && ['A', 'B', 'C'].some(k => Number.isFinite(zonePayload[k])))
+      const isCellPayloadSparse = (() => {
+        if (!hasCellPayload) return false
+        const n = Math.min(cells.length, ext.length ?? 0)
+        if (n <= 0) return true
+        let count = 0, nonZero = 0, sum = 0
+        for (let i = 0; i < n; i++) {
+          const v = Number(ext[i])
+          if (!Number.isFinite(v)) continue
+          const vv = _clamp01(v)
+          sum += vv
+          count += 1
+          if (vv > 0.03) nonZero += 1
+        }
+        if (count === 0) return true
+        return (sum / count) < 0.08 || (nonZero / count) < 0.08
+      })()
+
+      if (!ext && sim) {
+        // Camera-like behavior: zones drift slowly and react like occupancy waves.
+        const pulse1 = Math.max(0, Math.sin(t * 0.22 + floorIdx * 0.7))
+        const pulse2 = Math.max(0, Math.sin(t * 0.16 + 1.8 + floorIdx * 0.55))
+        const targets = {
+          A: _clamp01(0.40 + 0.18 * pulse1 + 0.07 * Math.sin(t * 0.41 + 0.5)),
+          B: _clamp01(0.58 + 0.16 * pulse2 + 0.05 * Math.sin(t * 0.37 + 1.1)),
+          C: _clamp01(0.76 + 0.12 * pulse1 + 0.04 * Math.sin(t * 0.29 + 2.2)),
+        }
+        const follow = 0.05
+        sim.zones.A += (targets.A - sim.zones.A) * follow
+        sim.zones.B += (targets.B - sim.zones.B) * follow
+        sim.zones.C += (targets.C - sim.zones.C) * follow
+      }
+
       for (let idx = 0; idx < cells.length; idx++) {
         let h
-        if (ext) {
+        if (hasCellPayload && !zonePayload && !isCellPayloadSparse) {
           // ── REAL DATA: value already normalized 0..1 ──────────────────
           // TODO: replace mock with: const res = await fetch(`/api/heatmap/floor/${floorIdx}`)
           //       then setFloorApiData(floorIdx, new Float32Array(res.json().values))
-          h = Math.max(0, Math.min(1, ext[idx] ?? 0))
-        } else {
-          // ── MOCK: independent animated pattern per floor ───────────────
+          h = _clamp01(ext[idx] ?? 0)
+        } else if (hasZonePayload || sim) {
+          // Zone payload path (ready for camera API): { A:0..1, B:0..1, C:0..1 } or { zones:{...} }
           const [r, c] = cells[idx]
-          h = (
+          const zone = cellZone.get(`${r},${c}`) ?? 'B'
+          const srcZones = hasZonePayload ? {
+            A: _clamp01(Number.isFinite(zonePayload.A) ? zonePayload.A : sim.zones.A),
+            B: _clamp01(Number.isFinite(zonePayload.B) ? zonePayload.B : sim.zones.B),
+            C: _clamp01(Number.isFinite(zonePayload.C) ? zonePayload.C : sim.zones.C),
+          } : sim.zones
+
+          const nr = sim.maxR === sim.minR ? 0 : (r - sim.minR) / (sim.maxR - sim.minR)
+          const nc = sim.maxC === sim.minC ? 0 : (c - sim.minC) / (sim.maxC - sim.minC)
+          const travel = Math.sin((nr * 6.2 - t * 1.35) + nc * 1.8 + floorIdx * 0.35) * 0.05
+          const swirl = Math.cos((nc * 8.4 + t * 0.95) - nr * 2.1) * 0.04
+          const grain = (sim.cellNoise[idx] - 0.5) * 0.035
+          h = _clamp01(srcZones[zone] + travel + swirl + grain)
+
+          // Keep floor 1 readable if API for this floor is sparse/incomplete.
+          if (floorIdx === 0 && (!hasZonePayload && (!hasCellPayload || isCellPayloadSparse))) {
+            h = _clamp01(h + 0.08)
+          }
+        } else {
+          // Fallback legacy mock.
+          const [r, c] = cells[idx]
+          const zone = cellZone.get(`${r},${c}`) ?? 'B'
+          const zp = ZONE_PROFILES[zone]
+          const base = (
             Math.sin(r*seed.fa + c*seed.fb + t)      * 0.40 +
             Math.cos(r*seed.fc - c*seed.fd + t*1.3)  * 0.35 +
             Math.sin((r-c)*seed.fe + t*0.75)          * 0.25 + 1
           ) / 2
+          const zoneWave = Math.sin((r + c) * 0.08 + t * zp.drift) * zp.wave
+          h = _clamp01(zp.center + (base - 0.5) * zp.amp + zoneWave)
         }
+
+        if (!Number.isFinite(h)) h = 0.55
+        if (floorIdx === 0) h = Math.max(h, 0.20)
         const poly = polyRefs.current[idx]
-        if (poly) poly.setAttribute('fill', HEAT_PALETTE[Math.round(h*(HEAT_PALETTE.length-1))])
+        if (poly) {
+          const paletteIdx = Math.max(0, Math.min(HEAT_PALETTE.length - 1, Math.round(h * (HEAT_PALETTE.length - 1))))
+          poly.setAttribute('fill', HEAT_PALETTE[paletteIdx])
+        }
       }
       if (running) raf.current = requestAnimationFrame(draw)
     }
@@ -292,6 +368,112 @@ const FLOORS = [
   { id: 6, img: '/Floorplan/Floor6plan.png', heatmap: '/Floorplan/HeatmapgridFloor6.svg' },
 ]
 
+const FLOOR_TRACK_PRESET = {
+  1: { people: 41 },
+  2: { people: 49 },
+  3: { people: 55 },
+  4: { people: 63 },
+  5: { people: 70 },
+  6: { people: 78 },
+}
+
+function getDonutColor(value) {
+  const pct = Number(value) || 0
+  if (pct >= 85) return '#ef4444'
+  if (pct >= 70) return '#f97316'
+  if (pct >= 40) return '#f59e0b'
+  return '#10b981'
+}
+
+function DonutMetric({ color, value, Icon, size = 86 }) {
+  const svgSize = 100
+  const ringSize = size
+
+  return (
+    <div
+      style={{
+        width: size + 6,
+        height: size + 6,
+        position: 'relative',
+        filter: `drop-shadow(0 0 8px ${color}66)`,
+      }}
+    >
+      <svg viewBox="0 0 100 100" width={size + 6} height={size + 6} style={{ display: 'block' }}>
+        <circle cx="50" cy="50" r="48" fill="#051715" className="transition-colors duration-300" />
+        <g transform="rotate(-90 50 50)">
+          <circle cx="50" cy="50" r="36" fill="none" stroke={color} strokeWidth="7" strokeDasharray="52.55 173.64" strokeDashoffset="0" />
+          <circle cx="50" cy="50" r="36" fill="none" stroke={color} strokeWidth="7" strokeDasharray="52.55 173.64" strokeDashoffset="-56.55" opacity={value >= 25 ? 1 : 0.25} />
+          <circle cx="50" cy="50" r="36" fill="none" stroke={color} strokeWidth="7" strokeDasharray="52.55 173.64" strokeDashoffset="-113.1" opacity={value >= 50 ? 1 : 0.25} />
+          <circle cx="50" cy="50" r="36" fill="none" stroke={color} strokeWidth="7" strokeDasharray="52.55 173.64" strokeDashoffset="-169.65" opacity={value >= 75 ? 1 : 0.25} />
+        </g>
+      </svg>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 0,
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ width: ringSize * 0.42, height: ringSize * 0.42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={Math.round(ringSize * 0.34)} color={color} strokeWidth={2.2} style={{ filter: `drop-shadow(0 0 6px ${color}77)` }} />
+        </div>
+        <div style={{ color: color, fontSize: Math.max(11, Math.round(size * 0.13)), fontWeight: 900, lineHeight: 1, marginTop: -1, textShadow: `0 0 8px ${color}66` }}>
+          {value}%
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FloorTrackCard({ floorLabel, people, side, donutSize = 86, isSingle = false, connectorLength = 24 }) {
+  const color = getDonutColor(people)
+  const labelLineOffset = 28
+  const labelVerticalOffset = -6
+  const labelStyle = side === 'left'
+    ? { position: 'absolute', top: '50%', transform: `translateY(calc(-50% + ${labelVerticalOffset}px))`, left: donutSize + labelLineOffset, color: '#d1d5db', fontSize: 10, letterSpacing: 0.5, whiteSpace: 'nowrap' }
+    : { position: 'absolute', top: '50%', transform: `translateY(calc(-50% + ${labelVerticalOffset}px))`, right: donutSize + labelLineOffset, color: '#d1d5db', fontSize: 10, letterSpacing: 0.5, textAlign: 'right', whiteSpace: 'nowrap' }
+
+  if (isSingle) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ color: '#d1d5db', fontSize: 10, letterSpacing: 0.5 }}>{floorLabel}</div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <DonutMetric color={color} value={people} Icon={Users} size={donutSize} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minHeight: donutSize + 6 }}>
+      <div style={labelStyle}>{floorLabel}</div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+      {side === 'right' && <div style={{ width: connectorLength, height: 1, background: color, opacity: 0.65 }} />}
+      <DonutMetric color={color} value={people} Icon={Users} size={donutSize} />
+      {side === 'left' && <div style={{ width: connectorLength, height: 1, background: color, opacity: 0.65 }} />}
+      </div>
+    </div>
+  )
+}
+
+function TotalTrackCard({ people }) {
+  const color = getDonutColor(people)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{ color: '#d1d5db', fontSize: 10, letterSpacing: 0.5 }}>Total</div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <DonutMetric color={color} value={people} Icon={Users} size={104} />
+      </div>
+    </div>
+  )
+}
+
 // Stage configs
 const STAGES = [
   { key: 'stacked',  label: 'ทุกชั้น',    gap: 18,  desc: 'All floors stacked'   },
@@ -301,10 +483,64 @@ const STAGES = [
 
 const FLOOR_W   = 180   // px — width of each floor image in the viewer
 const IMG_RATIO = 1.0   // PNG images are square (1024×1024)
+const TRACK_TOTAL_X = '27%'
+const TRACK_TOTAL_Y = '50%'
+const TRACK_SPREAD_RIGHT_X = '43%'
+const TRACK_LEFT_NUDGE_X = '4%'
+const MOBILE_TRACK_LEFT_X = 18
+const MOBILE_TRACK_TOP_Y = '19%'
+const TRACK_VIEWER_TOP_OFFSET = 24
+const TRACK_CONNECTOR_EXPLODED = 'clamp(90px, 11vw, 160px)'
+const TRACK_FLOOR_ANCHOR_RATIO = 0.34
+const TRACK_FLOOR_Y_NUDGE = -12
+const TRACK_LEFT_FLOOR_Y_NUDGE = 80
+const TRACK_LEFT_ALL_Y_NUDGE_PX = 0
+const TRACK_FLOOR_Y_ADJUST = {
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+  5: 0,
+  6: 0,
+}
+const TRACK_LAYOUT = [
+  { floorId: 5, side: 'left',  row: 0 },
+  { floorId: 6, side: 'right', row: 0 },
+  { floorId: 3, side: 'left',  row: 1 },
+  { floorId: 4, side: 'right', row: 1 },
+  { floorId: 1, side: 'left',  row: 2 },
+  { floorId: 2, side: 'right', row: 2 },
+]
 
 export default function RelationshipLayer() {
   const [stage, setStage]           = useState('stacked')
   const [selectedFloor, setSelected] = useState(2)   // 0-based index
+
+  // ── API gateway ──────────────────────────────────────────────────────────
+  const apiBase = (new URLSearchParams(window.location.search).get('gateway') || import.meta.env.VITE_GATEWAY_URL || '').replace(/\/$/, '')
+
+  // ── Cameras from API ──────────────────────────────────────────────────────
+  const [cameras, setCameras] = useState([])
+  const abortRef = useRef(null)
+
+  useEffect(() => {
+    const fetchCameras = async () => {
+      if (!apiBase) return
+      if (abortRef.current) abortRef.current.abort()
+      abortRef.current = new AbortController()
+      try {
+        const res = await fetch(apiBase + '/api/cameras', { signal: abortRef.current.signal })
+        if (!res.ok) return
+        const data = await res.json()
+        setCameras(data)
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn('cameras fetch error', e)
+      }
+    }
+    fetchCameras()
+    const id = setInterval(fetchCameras, 2000)
+    return () => { clearInterval(id); if (abortRef.current) abortRef.current.abort() }
+  }, [apiBase])
 
   // ── Per-floor API data (null = use mock animation) ──────────────────────
   // When real API is ready, replace null entries with Float32Array(cells.length)
@@ -318,6 +554,26 @@ export default function RelationshipLayer() {
   // Track how many floor plan images have loaded → show skeleton until all ready
   const [loadedCount, setLoadedCount] = useState(0)
   const allLoaded = loadedCount >= FLOORS.length
+  const trackRows = [...FLOORS]
+    .sort((a, b) => b.id - a.id)
+    .map(f => {
+      // Try to find a camera with floor ID, fallback to preset
+      const floorNum = f.id
+      const floorCam = cameras.find(c => {
+        const camFloorNum = parseInt(c.id?.split('-')?.[0] || c.id?.charAt(0) || '0')
+        return camFloorNum === floorNum
+      })
+      const people = floorCam ? Math.round((floorCam.total_people || 0) / 5) : FLOOR_TRACK_PRESET[f.id].people
+      return {
+        floorId: f.id,
+        floorLabel: `Floor ${f.id}`,
+        people,
+      }
+    })
+  const selectedFloorId = FLOORS[selectedFloor]?.id
+  const selectedTrackRow = trackRows.find(row => row.floorId === selectedFloorId) ?? null
+  const totalPeople = Math.ceil(trackRows.reduce((sum, row) => sum + row.people, 0) / Math.max(trackRows.length, 1))
+  const stackedTracks = trackRows.filter(row => row.floorId !== 0)
 
   const idleTimer = useRef(null)
   const viewerRef = useRef(null)
@@ -385,9 +641,10 @@ export default function RelationshipLayer() {
   const FIXED_H   = imgH + (numFloors - 1) * MAX_GAP + 32  // constant height
   const totalH    = FIXED_H  // always the same regardless of stage
 
-  // Y position of floor i — stack centered vertically with upward bias
+  // Y position of floor i — stacked is truly centered, other stages keep slight upward bias
   const stackH  = imgH + (numFloors - 1) * cfg.gap   // total visual height of stack
-  const topPad  = Math.max(8, Math.round((FIXED_H - stackH) / 2) - 40) // center - 40px shift up
+  const topPadShift = stage === 'stacked' ? -10 : -40
+  const topPad  = Math.max(8, Math.round((FIXED_H - stackH) / 2) + topPadShift)
 
   function floorY(i) {
     // floor i=5 (ชั้น 6) at topPad, floor i=0 (ชั้น 1) at topPad + (numFloors-1)*gap
@@ -439,32 +696,170 @@ export default function RelationshipLayer() {
               การเชื่อมข้อมูลหลายประเภทเข้าด้วยกัน เพื่ออธิบายเหตุ ผล กระทบ และพฤติกรรมของอาคาร
             </p>
           </div>
-          {/* Zone legend */}
-          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            {ZONE_LABELS.map((label, i) => (
-              <div key={label} className="flex items-center gap-1">
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: ZONE_COLORS[i], boxShadow: `0 0 6px ${ZONE_COLORS[i]}88` }} />
-                <span style={{ fontSize: 9, fontWeight: 700, color: ZONE_COLORS[i], letterSpacing: 1 }}>
-                  ZONE {label}
-                </span>
-              </div>
-            ))}
-          </div>
 
         </div>
 
         {/* ── Floor Plan Viewer ── */}
         <div
-          className="flex items-center justify-center py-4 px-6"
+          className="relative flex items-center justify-center py-4 px-6"
           style={{ height: FIXED_H + 48 }}
         >
+          {stage === 'stacked' ? (
+            <div
+              className="lg:hidden"
+              style={{
+                position: 'absolute',
+                left: MOBILE_TRACK_LEFT_X,
+                top: MOBILE_TRACK_TOP_Y,
+                transform: 'translateY(-50%)',
+                zIndex: 30,
+                pointerEvents: 'none',
+              }}
+            >
+              <TotalTrackCard people={totalPeople} />
+            </div>
+          ) : stage === 'exploded' ? (
+            <div
+              className="lg:hidden"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 30,
+                pointerEvents: 'none',
+              }}
+            >
+              {TRACK_LAYOUT.map(({ floorId, side, row }) => {
+                const trackRow = trackRows.find(r => r.floorId === floorId)
+                if (!trackRow) return null
+                const topByRow = ['26%', '50%', '74%']
+                const mobileTop = side === 'left'
+                  ? `calc(${topByRow[row]} + ${TRACK_LEFT_ALL_Y_NUDGE_PX}px)`
+                  : topByRow[row]
+                return (
+                  <div
+                    key={`m-${floorId}`}
+                    style={{
+                      position: 'absolute',
+                      left: side === 'left' ? '10%' : '90%',
+                      top: mobileTop,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  >
+                    <FloorTrackCard
+                      floorLabel={trackRow.floorLabel}
+                      people={trackRow.people}
+                      side={side}
+                      donutSize={56}
+                      isSingle
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ) : stage !== 'stacked' && selectedTrackRow ? (
+            <div
+              className="lg:hidden"
+              style={{
+                position: 'absolute',
+                left: MOBILE_TRACK_LEFT_X,
+                top: MOBILE_TRACK_TOP_Y,
+                transform: 'translateY(-50%)',
+                zIndex: 30,
+                pointerEvents: 'none',
+              }}
+            >
+              <FloorTrackCard
+                floorLabel={selectedTrackRow.floorLabel}
+                people={selectedTrackRow.people}
+                side="left"
+                donutSize={104}
+                isSingle
+              />
+            </div>
+          ) : null}
+
+          {(() => {
+            const isTotalVisible = stage === 'stacked'
+            return (
+          <div
+            className="hidden lg:flex"
+            style={{
+              position: 'absolute',
+              left: TRACK_TOTAL_X,
+              top: TRACK_TOTAL_Y,
+              transform: `translate(-50%, -50%) scale(${isTotalVisible ? 1 : 0.28})`,
+              opacity: isTotalVisible ? 1 : 0,
+              transition: 'opacity 0.32s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+              zIndex: 30,
+              pointerEvents: 'none',
+            }}
+          >
+            <TotalTrackCard people={totalPeople} />
+          </div>
+            )
+          })()}
+
+          {TRACK_LAYOUT.map(({ floorId, side, row }) => {
+            const floor = trackRows.find(r => r.floorId === floorId)
+            if (!floor) return null
+            const isSingle = stage === 'single'
+            const isVisible = isSingle ? floorId === selectedFloorId : stage !== 'stacked'
+            const stagger = row * 0.05
+            const floorIdx = Math.max(0, Math.min(FLOORS.length - 1, floorId - 1))
+            const sideYAdjust = side === 'left' ? TRACK_LEFT_FLOOR_Y_NUDGE + TRACK_LEFT_ALL_Y_NUDGE_PX : 0
+            const floorAlignedTopPx =
+              TRACK_VIEWER_TOP_OFFSET +
+              floorY(floorIdx) +
+              Math.round(imgH * TRACK_FLOOR_ANCHOR_RATIO) +
+              TRACK_FLOOR_Y_NUDGE +
+              sideYAdjust +
+              (TRACK_FLOOR_Y_ADJUST[floorId] ?? 0)
+            const targetLeft = isSingle
+              ? TRACK_TOTAL_X
+              : (isVisible
+                ? (side === 'right'
+                ? `calc(${TRACK_TOTAL_X} + ${TRACK_SPREAD_RIGHT_X})`
+                : `calc(100% - (${TRACK_TOTAL_X} + ${TRACK_SPREAD_RIGHT_X}) + ${TRACK_LEFT_NUDGE_X})`)
+                : TRACK_TOTAL_X)
+            const targetTop = isSingle
+              ? TRACK_TOTAL_Y
+              : (isVisible
+                ? `${floorAlignedTopPx}px`
+                : TRACK_TOTAL_Y)
+            return (
+              <div
+                key={`${side}-${floorId}`}
+                className="hidden lg:flex"
+                style={{
+                  position: 'absolute',
+                  left: targetLeft,
+                  top: targetTop,
+                  transform: `translate(-50%, -50%) scale(${isVisible ? 1 : 0.28})`,
+                  opacity: isVisible ? 1 : 0,
+                  transition: `left 0.6s cubic-bezier(0.22, 1, 0.36, 1) ${stagger}s, top 0.6s cubic-bezier(0.22, 1, 0.36, 1) ${stagger}s, opacity 0.32s ease ${stagger}s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) ${stagger}s`,
+                  zIndex: 30,
+                  pointerEvents: 'none',
+                }}
+              >
+                <FloorTrackCard
+                  floorLabel={floor.floorLabel}
+                  people={floor.people}
+                  side={side}
+                  donutSize={isSingle ? 104 : 86}
+                  isSingle={isSingle}
+                  connectorLength={isSingle ? 24 : TRACK_CONNECTOR_EXPLODED}
+                />
+              </div>
+            )
+          })}
+
           <div ref={viewerRef} className="relative" style={{ width: FLOOR_W, height: FIXED_H }}>
             {/* 8-bit skeleton — fades out once all floor images are loaded */}
             <PixelSkeleton show={!allLoaded} />
             {/* Scale wrapper — enlarges stack in stacked mode; card border stays unchanged */}
             <div style={{
               position: 'absolute', inset: 0,
-              transform: stage === 'stacked' ? 'scale(1.6)' : 'scale(1)',
+              transform: stage === 'stacked' ? 'scale(1.55)' : 'scale(1)',
               transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               transformOrigin: '50% 50%',
             }}>
@@ -510,15 +905,11 @@ export default function RelationshipLayer() {
                     style={{ width: '100%', display: 'block', imageRendering: 'auto', transform: 'scale(1.03)', transformOrigin: 'top left' }}
                     draggable={false}
                   />
-                  {/* Zone A/B/C tint layer — sits under the animated heatmap */}
-                  <ZoneColorLayer
-                    opacity={stage === 'stacked' ? 0.35 : isInactive ? 0 : 0.65}
-                  />
                   {/* Animated heatmap colors (multiply under grid lines) */}
                   <HeatmapAnimatedCanvas
                     floorIdx={i}
                     apiValues={floorApiData[i]}
-                    opacity={stage === 'stacked' ? 0.4 : isInactive ? 0 : 0.88}
+                    opacity={stage === 'stacked' ? (i === 0 ? 0.92 : 0.4) : isInactive ? 0 : (i === 0 ? 1 : 0.88)}
                   />
                   {/* Heatmap grid overlay */}
                   <img
@@ -534,7 +925,7 @@ export default function RelationshipLayer() {
                       objectFit: 'fill',
                       transform: 'translateX(2%) translateY(9%)',
                       pointerEvents: 'none',
-                      opacity: stage === 'stacked' ? 0.4 : isInactive ? 0 : 0.9,
+                      opacity: stage === 'stacked' ? (i === 0 ? 0.22 : 0.4) : isInactive ? 0 : (i === 0 ? 0.45 : 0.9),
                       transition: 'opacity 0.4s ease',
                     }}
                   />
