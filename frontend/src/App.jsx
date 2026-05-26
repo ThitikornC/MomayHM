@@ -22,10 +22,10 @@ export default function App() {
           <Route path="/test" element={<Test />} />
           <Route path="/heatmap" element={<Heatmap />} />
           <Route path="/layer1" element={<Layer1 />} />
-          <Route path="/preview" element={<Layer11 />} />
+          <Route path="/V1" element={<Layer11 />} />
           <Route path="/layer-greedy" element={<LayerGreedy />} />
           <Route path="/layer-dp" element={<LayerDP />} />
-          <Route path="/relationship" element={<RelationshipLayer />} />
+          <Route path="/model" element={<RelationshipLayer />} />
           <Route path="*" element={<Navigate to={HOME} replace />} />
         </Routes>
       </BrowserRouter>

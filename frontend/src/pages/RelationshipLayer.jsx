@@ -902,7 +902,18 @@ export default function RelationshipLayer() {
                     src={floor.img}
                     alt={floor.label}
                     onLoad={() => setLoadedCount(c => c + 1)}
-                    style={{ width: '100%', display: 'block', imageRendering: 'auto', transform: 'scale(1.03)', transformOrigin: 'top left' }}
+                    style={{
+                      width: '100%',
+                      display: 'block',
+                      imageRendering: 'auto',
+                      transform: 'scale(1.03)',
+                      transformOrigin: 'top left',
+                      outline: 'none',
+                      border: 'none',
+                      WebkitTouchCallout: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitFocusRingColor: 'transparent',
+                    }}
                     draggable={false}
                   />
                   {/* Animated heatmap colors (multiply under grid lines) */}
