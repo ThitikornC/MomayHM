@@ -2350,7 +2350,7 @@ function MomayRelationshipLayerInner() {
           background: '#111111',
           boxShadow: '0 0 32px rgba(255,184,0,0.08), inset 0 1px 0 rgba(255,184,0,0.08)',
           overflow: 'hidden',
-          height: FIXED_H + 104,  // header(~56) + py-4 viewer padding(32) + extra(16)
+          height: FIXED_H + 158,  // header(~56) + ticker(52) + py-4 viewer padding(32) + extra(18)
         }}
       >
         {/* Header */}
