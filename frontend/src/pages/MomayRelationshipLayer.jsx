@@ -1142,35 +1142,35 @@ function MomayNotifPopup({ open, onClose, room }) {
   }
 
   const renderBody = n => {
-    let parsed = {}
-    try { parsed = JSON.parse(n.body || '{}') } catch {}
-    if (parsed.power !== undefined) {
-      const val = Number(parsed.power) || 0
+    if (n.power !== undefined) {
+      const val = Number(n.power) || 0
       return (
-        <div style={{ marginTop:8 }}>
-          <div style={{ fontSize:11,color:'#999',marginBottom:6 }}>Current peak power is {val.toFixed(2)} kW</div>
-          <div style={{ background:'#fff2cc',padding:'10px 12px',borderRadius:8,border:'1px solid #f1dca3' }}>
-            <div style={{ fontWeight:800,color:'#7b4f00',fontSize:16 }}>Peak Power: {val.toFixed(2)} kW</div>
+        <div style={{ marginTop:6 }}>
+          <div style={{ background:'rgba(255,184,0,0.08)',padding:'8px 12px',borderRadius:8,border:'1px solid rgba(255,184,0,0.2)' }}>
+            <div style={{ fontWeight:800,color:'#FFB800',fontSize:15 }}>Peak Power: {val.toFixed(2)} kW</div>
           </div>
         </div>
       )
     }
-    if (parsed.energy_kwh !== undefined || parsed.electricity_bill !== undefined) {
-      const e    = Number(parsed.energy_kwh || 0).toFixed(2)
-      const bill = Number(parsed.electricity_bill || 0).toFixed(2)
-      const date = parsed.date || '-'
+    if (n.energy_kwh !== undefined || n.electricity_bill !== undefined) {
+      const e    = Number(n.energy_kwh || 0).toFixed(2)
+      const bill = Number(n.electricity_bill || 0).toFixed(2)
+      const date = n.date || '-'
       return (
-        <div style={{ marginTop:8 }}>
-          <div style={{ fontSize:11,color:'#999',marginBottom:6 }}>Yesterday ({date})</div>
-          <div style={{ background:'#dff0d8',padding:'10px 12px',borderRadius:8,border:'1px solid #c3e6cb',color:'#155724',fontSize:12 }}>
-            <div style={{ fontSize:11 }}>Total Bill</div>
-            <div style={{ fontWeight:800,fontSize:16,marginBottom:6 }}>{bill} THB</div>
-            <div style={{ fontSize:11 }}>Energy</div>
-            <div style={{ fontWeight:700,fontSize:14 }}>{e} Unit</div>
-            <div style={{ marginTop:6,paddingTop:6,borderTop:'1px solid rgba(0,0,0,0.08)',fontSize:11,color:'#888' }}>Date: <strong style={{color:'#155724'}}>{date}</strong></div>
+        <div style={{ marginTop:6 }}>
+          <div style={{ fontSize:11,color:'#888',marginBottom:4 }}>Yesterday ({date})</div>
+          <div style={{ background:'rgba(255,184,0,0.08)',padding:'8px 12px',borderRadius:8,border:'1px solid rgba(255,184,0,0.2)',fontSize:12,color:'#e8c97a' }}>
+            <div style={{ fontSize:11,color:'#888' }}>Total Bill</div>
+            <div style={{ fontWeight:800,fontSize:15,marginBottom:4,color:'#FFB800' }}>{bill} THB</div>
+            <div style={{ fontSize:11,color:'#888' }}>Energy</div>
+            <div style={{ fontWeight:700,fontSize:13 }}>{e} Unit</div>
+            <div style={{ marginTop:6,paddingTop:6,borderTop:'1px solid rgba(255,184,0,0.15)',fontSize:10,color:'#666' }}>Date: <strong style={{color:'#e8c97a'}}>{date}</strong></div>
           </div>
         </div>
       )
+    }
+    if (n.body) {
+      return <div style={{ marginTop:4,fontSize:11,color:'#888' }}>{n.body}</div>
     }
     return null
   }
@@ -1189,7 +1189,7 @@ function MomayNotifPopup({ open, onClose, room }) {
           </div>
         </div>
 
-        <div style={{ overflowY:'auto',padding:'10px 14px',display:'flex',flexDirection:'column',gap:8 }}>
+        <div className="no-scrollbar" style={{ overflowY:'auto',padding:'10px 14px',display:'flex',flexDirection:'column',gap:8 }}>
           {loading && <div style={{ color:'#FFB800',fontSize:13,textAlign:'center',padding:20 }}>กำลังโหลด...</div>}
           {!loading && items.length === 0 && (
             <div style={{ textAlign:'center',padding:30,color:'#8a7060',fontSize:13 }}>
