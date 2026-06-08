@@ -2129,6 +2129,7 @@ function MomayRelationshipLayerInner() {
   const [solarOpen, setSolarOpen]     = useState(false)
   const [notifOpen, setNotifOpen]     = useState(false)
   const [notifCount, setNotifCount]   = useState(0)
+  const [weather, setWeather]         = useState(null)
   const calIconRef   = useRef(null)
   const solarIconRef = useRef(null)
   const bellIconRef  = useRef(null)
@@ -2150,6 +2151,17 @@ function MomayRelationshipLayerInner() {
       setTimeout(() => shake(solarIconRef), 1000)
     }, 10000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const WMO = { 0:'☀️',1:'🌤️',2:'⛅',3:'🌥️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌦️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌦️',82:'🌦️',95:'⛈️',96:'⛈️',99:'⛈️' }
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=13.2844&longitude=100.9268&current=temperature_2m,weather_code&timezone=Asia%2FBangkok')
+      .then(r => r.json())
+      .then(d => {
+        const cur = d.current
+        setWeather({ temp: cur.temperature_2m, icon: WMO[cur.weather_code] ?? '🌡️' })
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -2361,23 +2373,28 @@ function MomayRelationshipLayerInner() {
 
         </div>
 
-        {/* ── Ticker bar ── */}
-        <div style={{ overflow:'hidden', borderBottom:'1px solid rgba(255,184,0,0.15)', background:'rgba(255,184,0,0.04)', height:28, display:'flex', alignItems:'center', flexShrink:0 }}>
-          <div style={{ animation:'momay-marquee 28s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:11, color:'rgba(255,184,0,0.75)', fontFamily:'monospace', letterSpacing:'0.06em' }}>
-            {'Collaborative Sensing Platform by Momay'}
-            {' ◆ '}
-            {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
-            {' ◆ '}
-            {BUU_ROOMS[selectedFloor]?.label ?? ''}
-            {todayBill != null ? ` ◆ Energy Today: ${todayBill.toFixed(2)} THB` : ''}
-            {todayUnit != null ? ` / ${todayUnit.toFixed(2)} Unit` : ''}
-            {' ◆ BUU Smart Building ◆ Collaborative Sensing Platform by Momay ◆ '}
-            {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
-            {' ◆ '}
-            {BUU_ROOMS[selectedFloor]?.label ?? ''}
-            {todayBill != null ? ` ◆ Energy Today: ${todayBill.toFixed(2)} THB` : ''}
-            {todayUnit != null ? ` / ${todayUnit.toFixed(2)} Unit` : ''}
-            {' ◆ BUU Smart Building'}
+        {/* ── Ticker pill ── */}
+        <div style={{ display:'flex', justifyContent:'center', padding:'10px 20px 2px', flexShrink:0 }}>
+          <div style={{ overflow:'hidden', borderRadius:20, border:'1px solid rgba(255,184,0,0.35)', background:'rgba(255,184,0,0.06)', height:26, display:'flex', alignItems:'center', maxWidth:620, width:'100%', boxShadow:'0 0 10px rgba(255,184,0,0.08)' }}>
+            <div style={{ animation:'momay-marquee 30s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:11, color:'rgba(255,184,0,0.85)', fontFamily:'monospace', letterSpacing:'0.05em' }}>
+              {'Momay'}
+              {'  '}
+              {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/')}
+              {weather ? `  |  ${weather.temp.toFixed(1)}°C  |  ${weather.icon}` : ''}
+              {todayBill != null ? `  |  ${todayBill.toFixed(2)} THB` : ''}
+              {todayUnit != null ? `  |  ${todayUnit.toFixed(2)} Unit` : ''}
+              {'  |  '}
+              {BUU_ROOMS[selectedFloor]?.label ?? ''}
+              {'  |  BUU Smart Building  |  Momay'}
+              {'  '}
+              {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/')}
+              {weather ? `  |  ${weather.temp.toFixed(1)}°C  |  ${weather.icon}` : ''}
+              {todayBill != null ? `  |  ${todayBill.toFixed(2)} THB` : ''}
+              {todayUnit != null ? `  |  ${todayUnit.toFixed(2)} Unit` : ''}
+              {'  |  '}
+              {BUU_ROOMS[selectedFloor]?.label ?? ''}
+              {'  |  BUU Smart Building'}
+            </div>
           </div>
         </div>
 
