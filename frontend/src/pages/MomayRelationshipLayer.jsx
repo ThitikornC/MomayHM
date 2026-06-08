@@ -2376,8 +2376,8 @@ function MomayRelationshipLayerInner() {
         {/* ── Ticker pill ── */}
         <div style={{ display:'flex', justifyContent:'center', padding:'10px 16px 4px', flexShrink:0 }}>
           <div style={{ overflow:'hidden', borderRadius:24, border:'1px solid rgba(255,184,0,0.4)', background:'rgba(255,184,0,0.07)', height:38, display:'flex', alignItems:'center', maxWidth:960, width:'100%', boxShadow:'0 0 14px rgba(255,184,0,0.1)' }}>
-            <div style={{ animation:'momay-marquee 30s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:13, color:'rgba(255,184,0,0.9)', fontFamily:'monospace', letterSpacing:'0.05em', fontWeight:600 }}>
-              {`Collaborative Sensing Platform by Momay   ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})}${weather ? `   |   ${weather.temp.toFixed(1)}°C   |   ${weather.icon}   |` : '   |'}   Collaborative Sensing Platform by Momay   ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})}${weather ? `   |   ${weather.temp.toFixed(1)}°C   |   ${weather.icon}   |` : '   |'}`}
+            <div style={{ animation:'momay-marquee 18s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:13, color:'rgba(255,184,0,0.9)', fontFamily:'monospace', letterSpacing:'0.05em', fontWeight:600 }}>
+              {`Collaborative Sensing Platform by Momay   ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})}${weather ? `   |   ${weather.temp.toFixed(1)}°C   |   ${weather.icon}   |` : '   |'}`}
             </div>
           </div>
         </div>
