@@ -2377,23 +2377,7 @@ function MomayRelationshipLayerInner() {
         <div style={{ display:'flex', justifyContent:'center', padding:'10px 20px 2px', flexShrink:0 }}>
           <div style={{ overflow:'hidden', borderRadius:20, border:'1px solid rgba(255,184,0,0.35)', background:'rgba(255,184,0,0.06)', height:26, display:'flex', alignItems:'center', maxWidth:620, width:'100%', boxShadow:'0 0 10px rgba(255,184,0,0.08)' }}>
             <div style={{ animation:'momay-marquee 30s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:11, color:'rgba(255,184,0,0.85)', fontFamily:'monospace', letterSpacing:'0.05em' }}>
-              {'Momay'}
-              {'  '}
-              {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/')}
-              {weather ? `  |  ${weather.temp.toFixed(1)}°C  |  ${weather.icon}` : ''}
-              {todayBill != null ? `  |  ${todayBill.toFixed(2)} THB` : ''}
-              {todayUnit != null ? `  |  ${todayUnit.toFixed(2)} Unit` : ''}
-              {'  |  '}
-              {BUU_ROOMS[selectedFloor]?.label ?? ''}
-              {'  |  BUU Smart Building  |  Momay'}
-              {'  '}
-              {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/')}
-              {weather ? `  |  ${weather.temp.toFixed(1)}°C  |  ${weather.icon}` : ''}
-              {todayBill != null ? `  |  ${todayBill.toFixed(2)} THB` : ''}
-              {todayUnit != null ? `  |  ${todayUnit.toFixed(2)} Unit` : ''}
-              {'  |  '}
-              {BUU_ROOMS[selectedFloor]?.label ?? ''}
-              {'  |  BUU Smart Building'}
+              {`Collaborative Sensing Platform by Momay   ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})}${weather ? `   |   ${weather.temp.toFixed(1)}°C   |   ${weather.icon}   |` : '   |'}   Collaborative Sensing Platform by Momay   ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})}${weather ? `   |   ${weather.temp.toFixed(1)}°C   |   ${weather.icon}   |` : '   |'}`}
             </div>
           </div>
         </div>
