@@ -601,7 +601,7 @@ function _bkkTodayStr() {
 function _addDay(d, n) {
   const dt = new Date(d + 'T00:00:00')
   dt.setDate(dt.getDate() + n)
-  return dt.toISOString().split('T')[0]
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
 }
 function _fmtBookingDate(d) {
   return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
@@ -614,6 +614,13 @@ const MOMAY_SHADOW      = '1px 1px 0 #000,-4px 3px #3b3305,0 0 12px rgba(255,230
 const MOMAY_SHADOW_BIG  = '1px 1px 0 #000,-8px 6px #3b3305,0 0 20px rgba(255,230,160,0.55)'
 const MOMAY_TEXT_COLOR  = '#2c1810'
 const MOMAY_TEXT_SHADOW = '0 1px 0 rgba(255,255,255,0.3),0 -1px 0 rgba(0,0,0,0.1)'
+const DARK_BG           = '#111'
+const DARK_CARD         = '#1a1a1a'
+const AMBER             = '#FFB800'
+const AMBER_DIM         = '#e8c97a'
+const AMBER_BORDER      = '1.5px solid rgba(255,184,0,0.4)'
+const AMBER_GLOW        = 'rgba(255,184,0,0.1)'
+const AMBER_SHADOW      = '0 0 20px rgba(255,184,0,0.15)'
 
 function MomayCalendarPopup({ open, onClose, room }) {
   const today = new Date()
@@ -683,27 +690,27 @@ function MomayCalendarPopup({ open, onClose, room }) {
     setDetailLoading(false)
   }
 
-  const navBtn = { background:MOMAY_CREAM_BG, border:MOMAY_GOLD_BORDER, borderRadius:10, color:MOMAY_TEXT_COLOR, fontWeight:700, fontSize:16, padding:'4px 14px', cursor:'pointer', boxShadow:MOMAY_SHADOW, textShadow:MOMAY_TEXT_SHADOW }
+  const navBtn = { background: DARK_CARD, border: AMBER_BORDER, borderRadius:8, color:AMBER, fontWeight:700, fontSize:16, padding:'4px 14px', cursor:'pointer', boxShadow:AMBER_SHADOW }
 
   return (
-    <div style={{ position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:12 }}>
-      <div style={{ background:MOMAY_CREAM_BG, border:'6px solid #74640a', borderRadius:12, width:'100%', maxWidth:520, maxHeight:'90vh', overflow:'auto', padding:'18px 16px', display:'flex', flexDirection:'column', gap:12, boxShadow:MOMAY_SHADOW_BIG, fontFamily:'"Roboto",sans-serif' }}>
+    <div style={{ position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:12 }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ background:DARK_BG, border:AMBER_BORDER, borderRadius:14, width:'100%', maxWidth:520, minHeight:520, maxHeight:'90vh', overflow:'auto', padding:'18px 16px', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 0 40px rgba(0,0,0,0.8)', fontFamily:'"Roboto",sans-serif' }}>
 
         {/* Month nav */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <button onClick={prevMonth} style={navBtn}>&lt;</button>
-          <span style={{ background:MOMAY_CREAM_BG, border:MOMAY_GOLD_BORDER, borderRadius:10, padding:'4px 18px', fontWeight:700, fontSize:15, color:MOMAY_TEXT_COLOR, boxShadow:MOMAY_SHADOW, textShadow:MOMAY_TEXT_SHADOW }}>
+          <span style={{ background:DARK_CARD, border:AMBER_BORDER, borderRadius:8, padding:'4px 18px', fontWeight:700, fontSize:15, color:AMBER, boxShadow:AMBER_SHADOW }}>
             {MONTHS_EN[month]} {year}
           </span>
           <button onClick={nextMonth} style={navBtn}>&gt;</button>
         </div>
 
-        {loading && <div style={{ color:'#74640a',textAlign:'center',padding:16,fontWeight:700 }}>Loading...</div>}
+        {loading && <div style={{ color:AMBER,textAlign:'center',padding:16,fontWeight:700 }}>Loading...</div>}
 
         {!loading && (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
             {DAYS_EN.map(d => (
-              <div key={d} style={{ background:'#e8e0c0', border:'1px solid #c4a84a', color:MOMAY_TEXT_COLOR, fontSize:9, fontWeight:800, textAlign:'center', padding:'4px 0', letterSpacing:0.5 }}>{d}</div>
+              <div key={d} style={{ background:AMBER_GLOW, border:'1px solid rgba(255,184,0,0.2)', color:AMBER, fontSize:9, fontWeight:800, textAlign:'center', padding:'4px 0', letterSpacing:0.5 }}>{d}</div>
             ))}
             {cells.map((d,i) => {
               const ev = eventForDay(d)
@@ -715,17 +722,17 @@ function MomayCalendarPopup({ open, onClose, room }) {
               return (
                 <div key={i} onClick={() => clickDay(d)} style={{
                   minHeight: 60,
-                  background: isSelected ? '#fff3cc' : isToday ? '#fffbe6' : '#fff',
-                  border: isSelected ? '2px solid #74640a' : isToday ? '2px solid #c4a84a' : '1px solid #d4c47a',
+                  background: isSelected ? 'rgba(255,184,0,0.2)' : isToday ? AMBER_GLOW : DARK_CARD,
+                  border: isSelected ? `2px solid ${AMBER}` : isToday ? '2px solid rgba(255,184,0,0.5)' : '1px solid rgba(255,184,0,0.12)',
                   cursor: d ? 'pointer' : 'default',
                   display: 'flex', flexDirection: 'column', padding: '4px 3px',
                   boxSizing: 'border-box',
                 }}>
                   {d && (
                     <>
-                      <span style={{ color: hasBill?'#5a2b00':isToday?'#74640a':'#888', fontSize:13, fontWeight:700, lineHeight:1.2, alignSelf:'flex-end', paddingRight:2 }}>{d}</span>
-                      {hasEnergy && <div style={{ color:'#333', fontSize:9, fontWeight:600, lineHeight:1.3, marginTop:'auto' }}>{Number(ev.energy).toFixed(2)} Unit</div>}
-                      {hasBill   && <div style={{ color:'#5a2b00', fontSize:9, fontWeight:800, lineHeight:1.3 }}>{Number(ev.bill).toFixed(2)} B</div>}
+                      <span style={{ color: hasBill?AMBER:isToday?AMBER_DIM:'#555', fontSize:13, fontWeight:700, lineHeight:1.2, alignSelf:'flex-end', paddingRight:2 }}>{d}</span>
+                      {hasEnergy && <div style={{ color:'#aaa', fontSize:9, fontWeight:600, lineHeight:1.3, marginTop:'auto' }}>{Number(ev.energy).toFixed(2)} Unit</div>}
+                      {hasBill   && <div style={{ color:AMBER_DIM, fontSize:9, fontWeight:800, lineHeight:1.3 }}>{Number(ev.bill).toFixed(2)} B</div>}
                     </>
                   )}
                 </div>
@@ -735,24 +742,21 @@ function MomayCalendarPopup({ open, onClose, room }) {
         )}
 
         {selected && (
-          <div style={{ background:MOMAY_CREAM_BG, border:'6px solid #74640a', borderRadius:10, padding:'12px 18px', boxShadow:MOMAY_SHADOW, display:'flex', gap:20, justifyContent:'center', alignItems:'center' }}>
+          <div style={{ background:DARK_CARD, border:AMBER_BORDER, borderRadius:10, padding:'12px 18px', boxShadow:AMBER_SHADOW, display:'flex', gap:20, justifyContent:'center', alignItems:'center' }}>
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize:11, color:'#8a6030', marginBottom:2 }}>ค่าไฟฟ้า</div>
+              <div style={{ fontSize:11, color:'#8a7060', marginBottom:2 }}>ค่าไฟฟ้า</div>
               {detailLoading
-                ? <div style={{ fontSize:13, color:'#74640a', fontWeight:700 }}>Loading...</div>
-                : <div style={{ fontSize:22, fontWeight:800, color:'#5a2b00', textShadow:MOMAY_TEXT_SHADOW }}>{dayDetail?.bill} <span style={{fontSize:12}}>THB</span></div>}
+                ? <div style={{ fontSize:13, color:AMBER, fontWeight:700 }}>Loading...</div>
+                : <div style={{ fontSize:22, fontWeight:800, color:AMBER }}>{dayDetail?.bill} <span style={{fontSize:12}}>THB</span></div>}
             </div>
-            <div style={{ width:1, height:40, background:'#c4a84a' }} />
+            <div style={{ width:1, height:40, background:'rgba(255,184,0,0.3)' }} />
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize:11, color:'#8a6030', marginBottom:2 }}>พลังงาน</div>
-              {!detailLoading && <div style={{ fontSize:22, fontWeight:800, color:'#5a2b00', textShadow:MOMAY_TEXT_SHADOW }}>{dayDetail?.unit} <span style={{fontSize:12}}>Unit</span></div>}
+              <div style={{ fontSize:11, color:'#8a7060', marginBottom:2 }}>พลังงาน</div>
+              {!detailLoading && <div style={{ fontSize:22, fontWeight:800, color:AMBER }}>{dayDetail?.unit} <span style={{fontSize:12}}>Unit</span></div>}
             </div>
           </div>
         )}
 
-        <div style={{ display:'flex', justifyContent:'center' }}>
-          <button onClick={onClose} style={{ ...navBtn, fontSize:13, padding:'6px 24px' }}>ปิด</button>
-        </div>
       </div>
     </div>
   )
@@ -795,7 +799,8 @@ function MomaySolarPopup({ open, onClose, room }) {
   const savingsMonth = fmtL(data?.savingsMonth)
 
   function addDay(d, n) {
-    const dt = new Date(d + 'T00:00:00'); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0]
+    const dt = new Date(d + 'T00:00:00'); dt.setDate(dt.getDate() + n)
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
   }
 
   const dateStr = (() => {
@@ -902,37 +907,24 @@ function MomaySolarPopup({ open, onClose, room }) {
   const s = reportData?.solar
   const hourly = s?.hourly || []
 
-  const navBtn = { background:MOMAY_CREAM_BG, border:MOMAY_GOLD_BORDER, borderRadius:10, color:MOMAY_TEXT_COLOR, fontWeight:700, fontSize:18, padding:'4px 12px', cursor:'pointer', boxShadow:MOMAY_SHADOW, textShadow:MOMAY_TEXT_SHADOW }
-  const pillStyle = { background:MOMAY_CREAM_BG, border:'6px solid #74640a', borderRadius:10, padding:'6px 14px', fontWeight:700, fontSize:16, color:MOMAY_TEXT_COLOR, textAlign:'center', boxShadow:'inset 0 0 5px rgba(0,0,0,0.15),2px 2px 4px rgba(0,0,0,0.6),-4px 3px #3b3305,0 0 12px rgba(255,230,160,0.55)', textShadow:'0 1px 0 rgba(255,255,255,0.3),1px 2px 4px rgba(0,0,0,0.6)', width:'100%', boxSizing:'border-box' }
-  const circleStyle = { width:130, height:130, borderRadius:'50%', background:'radial-gradient(circle at 30% 30%,#f8f6f0,#fffef8 45%,#fff8e8 55%,#f5f0e5 100%)', border:'3px solid #74640a', boxShadow:'inset 0 0 5px rgba(0,0,0,0.15),1px 1px 0 #000,-4px 3px #3b3305,0 0 12px rgba(255,230,160,0.55)', display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', color:MOMAY_TEXT_COLOR, fontWeight:'bold', textAlign:'center', textShadow:MOMAY_TEXT_SHADOW, cursor:'default' }
+  const navBtn = { background: DARK_CARD, border: AMBER_BORDER, borderRadius:8, color:AMBER, fontWeight:700, fontSize:18, padding:'4px 12px', cursor:'pointer', boxShadow:AMBER_SHADOW }
+  const pillStyle = { background: DARK_CARD, border: AMBER_BORDER, borderRadius:10, padding:'6px 14px', fontWeight:700, fontSize:16, color:AMBER_DIM, textAlign:'center', width:'100%', boxSizing:'border-box' }
+  const circleStyle = { width:130, height:130, borderRadius:'50%', background:'radial-gradient(circle at 30% 30%,#f8f6f0,#fffef8 45%,#fff8e8 55%,#f5f0e5 100%)', border: AMBER_BORDER, boxShadow: AMBER_SHADOW, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', color:'#2c1810', fontWeight:'bold', textAlign:'center', cursor:'default' }
 
   return (
     <>
-      <div style={{ position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-        <div style={{ position:'relative', background:MOMAY_CREAM_BG, border:'6px solid #74640a', borderRadius:12, width:'100%', maxWidth:320, padding:'20px 22px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, boxShadow:MOMAY_SHADOW_BIG, fontFamily:'"Roboto",sans-serif', overflow:'visible' }}>
-
-          {/* KWANG logo badge (top-right) */}
-          <div style={{ position:'absolute', top:-6, right:-6, zIndex:1 }}>
-            <img src="/images/Kwang_icon.png" alt="Kwang" style={{ width:52, height:52, objectFit:'contain', filter:'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }} />
-          </div>
+      <div style={{ position:'fixed',inset:0,zIndex:99999,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div style={{ position:'relative', background:DARK_BG, border:AMBER_BORDER, borderRadius:14, width:'100%', maxWidth:320, minHeight:420, padding:'20px 22px', display:'flex', flexDirection:'column', alignItems:'center', gap:14, boxShadow:'0 0 40px rgba(0,0,0,0.8)', fontFamily:'"Roboto",sans-serif', overflow:'visible' }}>
 
           {/* Date nav */}
           <div style={{ display:'flex', alignItems:'center', gap:6, width:'100%', justifyContent:'center' }}>
-            <button onClick={() => setDate(d => addDay(d,-1))} style={navBtn}>&lt;</button>
-            <span
-              onClick={() => {
-                const inp = Object.assign(document.createElement('input'),{type:'date',value:date})
-                Object.assign(inp.style,{position:'absolute',opacity:'0'})
-                document.body.appendChild(inp); inp.focus(); inp.click()
-                inp.onchange = () => { setDate(inp.value); document.body.removeChild(inp) }
-              }}
-              style={{ background:MOMAY_CREAM_BG, border:MOMAY_GOLD_BORDER, borderRadius:10, padding:'4px 8px', fontWeight:700, fontSize:13, color:MOMAY_TEXT_COLOR, textAlign:'center', boxShadow:MOMAY_SHADOW, textShadow:MOMAY_TEXT_SHADOW, cursor:'pointer', flex:1 }}
-            >{dateStr}</span>
-            <button onClick={() => setDate(d => addDay(d,1))} style={navBtn}>&gt;</button>
+            <button onClick={() => setDate(addDay(date,-1))} style={navBtn}>&lt;</button>
+            <span style={{ background:DARK_CARD, border:AMBER_BORDER, borderRadius:8, padding:'4px 8px', fontWeight:700, fontSize:13, color:AMBER_DIM, textAlign:'center', flex:1 }}>{dateStr}</span>
+            <button onClick={() => setDate(addDay(date,1))} style={navBtn}>&gt;</button>
           </div>
 
           {loading ? (
-            <div style={{ color:'#74640a', fontWeight:700, padding:20 }}>Loading...</div>
+            <div style={{ color:AMBER, fontWeight:700, padding:20 }}>Loading...</div>
           ) : (
             <>
               {/* Two circles */}
@@ -953,15 +945,12 @@ function MomaySolarPopup({ open, onClose, room }) {
             </>
           )}
 
-          {/* Kwang banner */}
-          <img src="/images/Kwang_baner.png" alt="Kwang" width="64" height="113" style={{ objectFit:'contain' }} />
-
           {/* Share / Generate Report icon */}
           <img
             src="/images/share.png"
             alt="Generate Report"
             onClick={openReport}
-            style={{ width:30, height:30, cursor:'pointer', paddingTop:4 }}
+            style={{ width:30, height:30, cursor:'pointer', paddingTop:4, filter:'brightness(0) invert(1)' }}
           />
         </div>
       </div>
@@ -972,16 +961,16 @@ function MomaySolarPopup({ open, onClose, room }) {
           style={{ position:'fixed',inset:0,zIndex:999999,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
           onClick={e => { if (e.target === e.currentTarget) setReportOpen(false) }}
         >
-          <div style={{ background:MOMAY_CREAM_BG, border:'6px solid #74640a', borderRadius:12, width:'100%', maxWidth:280, padding:'20px 22px', boxShadow:MOMAY_SHADOW_BIG, fontFamily:'"Roboto",sans-serif', display:'flex', flexDirection:'column', gap:12 }}>
-            <div style={{ textAlign:'center', fontWeight:700, fontSize:16, color:MOMAY_TEXT_COLOR }}>Export Report</div>
-            <div style={{ fontSize:12, color:'#74640a', textAlign:'center' }}>
+          <div style={{ background:DARK_BG, border:AMBER_BORDER, borderRadius:14, width:'100%', maxWidth:280, padding:'20px 22px', boxShadow:'0 0 40px rgba(0,0,0,0.8)', fontFamily:'"Roboto",sans-serif', display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ textAlign:'center', fontWeight:700, fontSize:16, color:AMBER }}>Export Report</div>
+            <div style={{ fontSize:12, color:'#8a7060', textAlign:'center' }}>
               {reportData ? 'Choose how you want to export your report' : 'Preparing report data…'}
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button
                 onClick={downloadReport}
                 disabled={!reportData || generating}
-                style={{ flex:1, background:MOMAY_CREAM_BG, border:'3px solid #74640a', borderRadius:8, padding:'10px 6px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, color:MOMAY_TEXT_COLOR, fontWeight:700, fontSize:12, boxShadow:MOMAY_SHADOW, opacity:(!reportData||generating)?0.5:1 }}
+                style={{ flex:1, background:DARK_CARD, border:AMBER_BORDER, borderRadius:8, padding:'10px 6px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, color:AMBER_DIM, fontWeight:700, fontSize:12, opacity:(!reportData||generating)?0.5:1 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -992,7 +981,7 @@ function MomaySolarPopup({ open, onClose, room }) {
               <button
                 onClick={shareReport}
                 disabled={!reportData || generating}
-                style={{ flex:1, background:MOMAY_CREAM_BG, border:'3px solid #74640a', borderRadius:8, padding:'10px 6px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, color:MOMAY_TEXT_COLOR, fontWeight:700, fontSize:12, boxShadow:MOMAY_SHADOW, opacity:(!reportData||generating)?0.5:1 }}
+                style={{ flex:1, background:DARK_CARD, border:AMBER_BORDER, borderRadius:8, padding:'10px 6px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, color:AMBER_DIM, fontWeight:700, fontSize:12, opacity:(!reportData||generating)?0.5:1 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -1002,7 +991,7 @@ function MomaySolarPopup({ open, onClose, room }) {
                 <span style={{ fontSize:10, fontWeight:400 }}>Send to others</span>
               </button>
             </div>
-            <button onClick={() => setReportOpen(false)} style={{ background:'none', border:'2px solid #74640a', borderRadius:8, padding:'6px 0', cursor:'pointer', color:MOMAY_TEXT_COLOR, fontWeight:700, fontSize:13 }}>Cancel</button>
+            <button onClick={() => setReportOpen(false)} style={{ background:'none', border:`1px solid #888`, borderRadius:8, padding:'6px 0', cursor:'pointer', color:'#888', fontWeight:700, fontSize:13 }}>Cancel</button>
           </div>
         </div>
       )}
