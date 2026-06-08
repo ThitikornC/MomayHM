@@ -1180,7 +1180,7 @@ function MomayNotifPopup({ open, onClose, room }) {
       <div style={{ background:'#111',border:'1.5px solid rgba(255,184,0,0.4)',borderRadius:14,width:'100%',maxWidth:400,maxHeight:'85vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 0 40px rgba(0,0,0,0.8)' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',borderBottom:'1px solid rgba(255,184,0,0.2)',flexShrink:0 }}>
           <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-            <span style={{ color:'#FFB800',fontWeight:800,fontSize:15 }}>การแจ้งเตือน</span>
+            <span style={{ color:'#FFB800',fontWeight:800,fontSize:15 }}>Notifications</span>
             {unread > 0 && <span style={{ background:'#667eea',color:'#fff',borderRadius:'50%',width:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700 }}>{unread}</span>}
           </div>
           <div style={{ display:'flex',gap:8,alignItems:'center' }}>
