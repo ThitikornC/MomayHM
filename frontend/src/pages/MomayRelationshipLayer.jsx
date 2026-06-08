@@ -2136,7 +2136,7 @@ function MomayRelationshipLayerInner() {
   useEffect(() => {
     if (!document.getElementById('momay-shake-style')) {
       const s = document.createElement('style'); s.id = 'momay-shake-style'
-      s.textContent = `@keyframes momay-shake{0%,100%{transform:rotate(0deg)}10%,30%,50%,70%,90%{transform:rotate(-10deg)}20%,40%,60%,80%{transform:rotate(10deg)}}`
+      s.textContent = `@keyframes momay-shake{0%,100%{transform:rotate(0deg)}10%,30%,50%,70%,90%{transform:rotate(-10deg)}20%,40%,60%,80%{transform:rotate(10deg)}} @keyframes momay-marquee{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}`
       document.head.appendChild(s)
     }
     const shake = ref => {
@@ -2359,6 +2359,26 @@ function MomayRelationshipLayerInner() {
          
           </div>
 
+        </div>
+
+        {/* ── Ticker bar ── */}
+        <div style={{ overflow:'hidden', borderBottom:'1px solid rgba(255,184,0,0.15)', background:'rgba(255,184,0,0.04)', height:28, display:'flex', alignItems:'center', flexShrink:0 }}>
+          <div style={{ animation:'momay-marquee 28s linear infinite', whiteSpace:'nowrap', display:'inline-block', paddingLeft:'100%', fontSize:11, color:'rgba(255,184,0,0.75)', fontFamily:'monospace', letterSpacing:'0.06em' }}>
+            {'Collaborative Sensing Platform by Momay'}
+            {' ◆ '}
+            {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+            {' ◆ '}
+            {BUU_ROOMS[selectedFloor]?.label ?? ''}
+            {todayBill != null ? ` ◆ Energy Today: ${todayBill.toFixed(2)} THB` : ''}
+            {todayUnit != null ? ` / ${todayUnit.toFixed(2)} Unit` : ''}
+            {' ◆ BUU Smart Building ◆ Collaborative Sensing Platform by Momay ◆ '}
+            {new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+            {' ◆ '}
+            {BUU_ROOMS[selectedFloor]?.label ?? ''}
+            {todayBill != null ? ` ◆ Energy Today: ${todayBill.toFixed(2)} THB` : ''}
+            {todayUnit != null ? ` / ${todayUnit.toFixed(2)} Unit` : ''}
+            {' ◆ BUU Smart Building'}
+          </div>
         </div>
 
         {/* ── Floor Plan Viewer ── */}
