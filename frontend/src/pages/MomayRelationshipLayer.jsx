@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, Component } from 'react'
 import { Layers, Users, Zap, Calendar, Bell, TrendingUp, TrendingDown, Coins, Home, BookOpen, Lightbulb, Wind, Camera, Cpu, ChevronDown } from 'lucide-react'
 import { Chart, registerables } from 'chart.js'
+import QRCode from 'qrcode'
 import LayerGreedy from './LayerGreedy.jsx'
 import LayerDP from './LayerDP.jsx'
 
@@ -1227,13 +1228,41 @@ function MomayBookingPopup({ open, onClose, room }) {
   const [error, setError]     = useState('')
   const [busy, setBusy]       = useState(false)
   const [bookings, setBookings] = useState([])
+  const [created, setCreated]   = useState(null)   // booking ที่เพิ่งจอง → โชว์ QR
+  const [qrUrl, setQrUrl]       = useState('')     // data URL ของ QR
+
+  const checkinUrl = created ? `${window.location.origin}/checkin?id=${created._id}` : ''
 
   useEffect(() => {
     if (!open) return
-    setError(''); setBusy(false)
+    setError(''); setBusy(false); setCreated(null); setQrUrl('')
     fetch(`${MOMAY_SERVER}/api/bookings?date=${date}&room=${encodeURIComponent(room)}`)
       .then(r => r.json()).then(j => setBookings(j.success ? j.data : [])).catch(() => setBookings([]))
   }, [open, date, room])
+
+  // สร้าง QR (ลิงก์เช็คอิน) เมื่อจองสำเร็จ + auto-save ลงเครื่อง
+  function _qrFileName() {
+    return `QR_${created?.room || 'room'}_${date}_${created?.startTime || ''}-${created?.endTime || ''}.png`.replace(/[^\w.\-]+/g, '_')
+  }
+  function downloadQR() {
+    if (!qrUrl) return
+    const a = document.createElement('a')
+    a.href = qrUrl; a.download = _qrFileName()
+    document.body.appendChild(a); a.click(); a.remove()
+  }
+  useEffect(() => {
+    if (!checkinUrl) { setQrUrl(''); return }
+    QRCode.toDataURL(checkinUrl, { width: 512, margin: 2 }).then(url => {
+      setQrUrl(url)
+      // auto-save ลงเครื่องทันทีที่จองสำเร็จ
+      try {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `QR_${created?.room || 'room'}_${date}_${created?.startTime || ''}-${created?.endTime || ''}.png`.replace(/[^\w.\-]+/g, '_')
+        document.body.appendChild(a); a.click(); a.remove()
+      } catch { /* ignore */ }
+    }).catch(() => setQrUrl(''))
+  }, [checkinUrl])
 
   if (!open) return null
 
@@ -1254,7 +1283,7 @@ function MomayBookingPopup({ open, onClose, room }) {
       if (!json.success) throw new Error(json.error || 'เกิดข้อผิดพลาด')
       setBookings(prev => [...prev, json.data])
       setName(''); setPurpose(''); setError('')
-      onClose()
+      setCreated(json.data)   // → โชว์ QR เช็คอิน (ไม่ปิด popup ทันที)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -1281,6 +1310,7 @@ function MomayBookingPopup({ open, onClose, room }) {
           <button onClick={() => setDate(d => _addDay(d, 1))} style={{ ...btn('#FFB800'), padding: '4px 10px' }}>&gt;</button>
         </div>
 
+        {!created && <>
         {/* Schedule grid */}
         <div style={{ border: '1px solid rgba(255,184,0,0.2)', borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ display: 'flex', background: 'rgba(255,184,0,0.1)', padding: '6px 12px', borderBottom: '1px solid rgba(255,184,0,0.2)' }}>
@@ -1323,15 +1353,39 @@ function MomayBookingPopup({ open, onClose, room }) {
             <input value={purpose} onChange={e => setPurpose(e.target.value)} placeholder="กรอกวัตถุประสงค์" style={inp} />
           </div>
         </div>
+        </>}
 
         {error && <div style={{ color: '#f87171', fontSize: 12 }}>{error}</div>}
 
+        {/* QR เช็คอิน หลังจองสำเร็จ */}
+        {created && (
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <div style={{ color: '#22c55e', fontWeight: 700, fontSize: 14 }}>✅ จองสำเร็จ — สแกน QR เพื่อเช็คอิน</div>
+            <div style={{ color: '#8a7060', fontSize: 11 }}>{created.bookerName} · {created.startTime}–{created.endTime}</div>
+            {qrUrl
+              ? <img src={qrUrl} alt="check-in QR" width={200} height={200} style={{ background: '#fff', padding: 8, borderRadius: 10 }} />
+              : <div style={{ color: '#888', fontSize: 12 }}>กำลังสร้าง QR…</div>}
+            <div style={{ color: '#60a5fa', fontSize: 10, wordBreak: 'break-all' }}>{checkinUrl}</div>
+            <div style={{ color: '#666', fontSize: 11 }}>สแกนด้วยมือถือเพื่อเช็คอิน → ไฟเปิดอัตโนมัติในช่วงเวลาจอง</div>
+          </div>
+        )}
+
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={btn('#888')}>ยกเลิก</button>
-          <button onClick={handleConfirm} disabled={busy} style={{ ...btn('#FFB800'), opacity: busy ? 0.6 : 1 }}>
-            {busy ? 'กำลังจอง...' : 'ยืนยันการจอง'}
-          </button>
+          {created ? (
+            <>
+              <button onClick={downloadQR} style={btn('#888')}>ดาวน์โหลด QR</button>
+              <button onClick={() => { navigator.clipboard?.writeText(checkinUrl) }} style={btn('#888')}>คัดลอกลิงก์</button>
+              <button onClick={onClose} style={btn('#FFB800')}>เสร็จสิ้น</button>
+            </>
+          ) : (
+            <>
+              <button onClick={onClose} style={btn('#888')}>ยกเลิก</button>
+              <button onClick={handleConfirm} disabled={busy} style={{ ...btn('#FFB800'), opacity: busy ? 0.6 : 1 }}>
+                {busy ? 'กำลังจอง...' : 'ยืนยันการจอง'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

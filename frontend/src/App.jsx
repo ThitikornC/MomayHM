@@ -10,6 +10,7 @@ import LayerGreedy from './pages/LayerGreedy.jsx'
 import LayerDP from './pages/LayerDP.jsx'
 import RelationshipLayer from './pages/RelationshipLayer.jsx'
 import MomayRelationshipLayer from './pages/MomayRelationshipLayer.jsx'
+import CheckIn from './pages/CheckIn.jsx'
 
 const HOME = import.meta.env.VITE_HOME || '/preview'
 
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/layer-dp" element={<LayerDP />} />
           <Route path="/model" element={<RelationshipLayer />} />
           <Route path="/momaymodel" element={<MomayRelationshipLayer />} />
+          <Route path="/checkin" element={<CheckIn />} />
           <Route path="*" element={<Navigate to={HOME} replace />} />
         </Routes>
       </BrowserRouter>
